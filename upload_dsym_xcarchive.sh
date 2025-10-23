@@ -57,10 +57,19 @@ if [ ! -f "$INFO_PLIST" ]; then
   exit 1
 fi
 
-# Extract values from Info.plist
-VERSION_NAME=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleShortVersionString" "$INFO_PLIST")
-VERSION_CODE=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleVersion" "$INFO_PLIST")
-APP_UNIQUE_ID=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleIdentifier" "$INFO_PLIST")
+# Extract values from Info.plist using cross-platform method
+# Convert binary plist to XML if needed, then parse with grep/sed
+if command -v plutil &> /dev/null; then
+  # Convert to XML format for parsing (works on macOS)
+  plutil -convert xml1 "$INFO_PLIST" -o - > /tmp/info_converted.plist 2>/dev/null || cat "$INFO_PLIST" > /tmp/info_converted.plist
+  PLIST_TO_PARSE="/tmp/info_converted.plist"
+else
+  PLIST_TO_PARSE="$INFO_PLIST"
+fi
+
+VERSION_NAME=$(grep -A1 "CFBundleShortVersionString" "$PLIST_TO_PARSE" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/' | head -1)
+VERSION_CODE=$(grep -A1 "CFBundleVersion" "$PLIST_TO_PARSE" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/' | head -1)
+APP_UNIQUE_ID=$(grep -A1 "CFBundleIdentifier" "$PLIST_TO_PARSE" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/' | head -1)
 
 # Determine build size
 if [ -n "$IPA_PATH" ] && [ -f "$IPA_PATH" ]; then
@@ -68,7 +77,7 @@ if [ -n "$IPA_PATH" ] && [ -f "$IPA_PATH" ]; then
   BUILD_SIZE=$(stat -f%z "$IPA_PATH")
 else
   echo "Using .app bundle for build size"
-  APP_PATH=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:ApplicationPath" "$INFO_PLIST")
+  APP_PATH=$(grep -A1 "ApplicationPath" "$PLIST_TO_PARSE" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/' | head -1)
   FULL_APP_PATH="$ARCHIVE_PATH/Products/Applications/$(basename "$APP_PATH")"
   if [ -d "$FULL_APP_PATH" ]; then
     BUILD_SIZE=$(du -sk "$FULL_APP_PATH" | awk '{print $1}')
