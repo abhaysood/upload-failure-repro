@@ -1,0 +1,2 @@
+Runner.xcarchive/dSYMs/Flutter.framework.dSYM filter=lfs diff=lfs merge=lfs -text
+Runner.xcarchive/dSYMs/Flutter.framework.dSYM/Contents/Resources/DWARF/Flutter filter=lfs diff=lfs merge=lfs -text

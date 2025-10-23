@@ -1,0 +1,24 @@
+name: Upload dSYM
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  upload-dsym:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x ./upload_dsym_xcarchive.sh
+
+      - name: Upload dSYM archive
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+        run: ./upload_dsym_xcarchive.sh Runner.xcarchive $INGEST_URL $API_KEY
